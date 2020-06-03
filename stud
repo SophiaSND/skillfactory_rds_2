@@ -1,0 +1,269 @@
+Задача проекта:
+
+    Построить модель, которая предсказывала бы результаты госэкзамена по математике для каждого ученика школы.
+    
+Цели проекта:
+
+    1)Сформулировать предположения и гипотезы для дальнейшего построения модели.
+    2)Проверить качество данных и очистить их, если это необходимо.
+    3)Определиться с параметрами модели.
+
+Основные шаги:
+
+        Посмотреть на данные.
+        Проверить данные на пустые значения.
+        Проверить данные на дублированные/полностью скоррелированные значения.
+        Проверить данные на наличие выбросов.
+        Отобрать данные, пригодные для дальнейшего построения модели.
+
+# Шаг 1. Посмотреть на данные.
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+import seaborn as sns
+
+from itertools import combinations
+
+from scipy.stats import ttest_ind
+stud_math=pd.read_csv('stud_math.csv')
+
+display(stud_math.head(10))
+stud_math.info() 
+
+Описание датасета:
+
+0 school — аббревиатура школы, в которой учится ученик
+
+1 sex — пол ученика ('F' - женский, 'M' - мужской)
+
+2 age — возраст ученика (от 15 до 22)
+
+3 address — тип адреса ученика ('U' - городской, 'R' - за городом)
+
+4 famsize — размер семьи('LE3' <= 3, 'GT3' >3)
+
+5 Pstatus — статус совместного жилья родителей ('T' - живут вместе 'A' - раздельно)
+
+6 Medu — образование матери (0 - нет, 1 - 4 класса, 2 - 5-9 классы, 3 - среднее специальное или 11 классов, 4 - высшее)
+
+7 Fedu — образование отца (0 - нет, 1 - 4 класса, 2 - 5-9 классы, 3 - среднее специальное или 11 классов, 4 - высшее)
+
+8 Mjob — работа матери ('teacher' - учитель, 'health' - сфера здравоохранения, 'services' - гос служба, 'at_home' - не работает, 'other' - другое)
+
+9 Fjob — работа отца ('teacher' - учитель, 'health' - сфера здравоохранения, 'services' - гос служба, 'at_home' - не работает, 'other' - другое)
+
+10 reason — причина выбора школы ('home' - близость к дому, 'reputation' - репутация школы, 'course' - образовательная программа, 'other' - другое)
+
+11 guardian — опекун ('mother' - мать, 'father' - отец, 'other' - другое)
+
+12 traveltime — время в пути до школы (1 - <15 мин., 2 - 15-30 мин., 3 - 30-60 мин., 4 - >60 мин.)
+
+13 studytime — время на учёбу помимо школы в неделю (1 - <2 часов, 2 - 2-5 часов, 3 - 5-10 часов, 4 - >10 часов)
+
+14 failures — количество внеучебных неудач (n, если 1<=n<=3)
+
+15 schoolsup — дополнительная образовательная поддержка (yes или no)
+
+16 famsup — семейная образовательная поддержка (yes или no)
+
+17 paid — дополнительные платные занятия по математике (yes или no)
+
+18 activities — дополнительные внеучебные занятия (yes или no)
+
+19 nursery — посещал детский сад (yes или no)
+
+20 studytime, granular - ???
+
+21 higher — хочет получить высшее образование (yes или no)
+
+22 internet — наличие интернета дома (yes или no)
+
+23 romantic — в романтических отношениях (yes или no)
+
+24 famrel — семейные отношения (от 1 - очень плохо до 5 - очень хорошо)
+
+25 freetime — свободное время после школы (от 1 - очень мало до 5 - очень мого)
+
+26 goout — проведение времени с друзьями (от 1 - очень мало до 5 - очень много)
+
+27 health — текущее состояние здоровья (от 1 - очень плохо до 5 - очень хорошо)
+
+28 absences — количество пропущенных занятий
+
+29 score — баллы по госэкзамену по математике
+
+В датасете 30 столбцов, 13 из них числовые, 17- стоковые.
+
+Вывод:
+Исходя из описания, понятно, что непрерывно числовых данных 3: age, absences, score.
+    Бинарных признаков 8: schoolsup, famsup, paid, activities, nursery, higher, internet, romantic.
+    Остальные категориальные, в которых малое количество уникальных значений.
+
+# Шаг 2. Проверить данные на пустые значения.
+
+# Функция для подсчета пустых значений
+def missing_values_table(df):
+        # Количество пропущенных значений
+        mis_val = df.isnull().sum()
+        
+        # Процент пропущенных значений
+        mis_val_percent = 100 * df.isnull().sum() / len(df)
+        
+        #Таблица с результатами
+        mis_val_table = pd.concat([mis_val, mis_val_percent], axis=1)
+        
+        # Переименовываем колонки
+        mis_val_table_ren_columns = mis_val_table.rename(
+        columns = {0 : 'Missing Values', 1 : '% of Total Values'})
+        
+        # Сортируем значения по проценту
+        mis_val_table_ren_columns = mis_val_table_ren_columns[
+            mis_val_table_ren_columns.iloc[:,1] != 0].sort_values(
+        '% of Total Values', ascending=False).round(1)
+        
+        # Печать дополнительной информации
+        print ("Your selected dataframe has " + str(df.shape[1]) + " columns.\n"      
+            "There are " + str(mis_val_table_ren_columns.shape[0]) +
+              " columns that have missing values.")
+        
+       
+        return mis_val_table_ren_columns
+
+missing_values_table(stud_math)
+
+plt.subplots(figsize=(15, 15))
+sns.heatmap(stud_math.isnull())
+
+Вывод:
+    Пропуски есть почти во всех столбцах, распределены равномерно, при построчном удалении пропусков, потеряется много данных.
+
+stud_math.score.hist()
+stud_math.score.describe()
+
+stud_math[stud_math.score==0]
+
+Вывод анализа целевой переменной:
+    Столбец имеет 6 пропусков и 37 значений равных 0 (Видимо, по каким-то причинам, экзамен не сдан, или человек не смог решить правильно ни одного задания, что маловероятно). На данном этапе рассматриваю 2 пути:
+    1) Удалить пропуски и нулевые значения, так как, с первого взгляда, они не несут полезной информации;
+    2) Заменить пропуски нулями и оставить все значения.
+Какой именно путь выбрать решу после анализа остальных столбцов.
+
+
+
+# Шаг 3. Проверить данные на дублированные/полностью скоррелированные значения.
+
+corr=stud_math.corr()
+corr
+
+sns.heatmap(corr)
+
+Вывод:
+    У столбцов studytime и studytime, granular корреляция -1. Они дублируют друг друга, studytime, granular можно убрать.
+
+stud_math.drop(['studytime, granular'], inplace = True, axis = 1)
+
+# Шаг 4.Проверить данные на наличие выбросов.
+
+def get_boxplot(column):
+    fig, ax = plt.subplots(figsize = (14, 4))
+    sns.boxplot(x=column, y='score', 
+                data=stud_math.loc[stud_math.loc[:, column].isin(stud_math.loc[:, column].value_counts().index[:10])],
+               ax=ax)
+    plt.xticks(rotation=45)
+    ax.set_title('Boxplot for ' + column)
+    plt.show()
+
+for col in stud_math.columns:
+    get_boxplot(col)
+
+Вывод:
+    Обнаружены нереалистичные значения в двух столбцах: 'Fedu' и 'famrel'.
+   
+
+stud_math.Fedu.value_counts()
+
+stud_math.famrel.value_counts()
+
+Они представлены в единичных случаях, посчитаем за опечатку и заменим.
+
+stud_math.Fedu = stud_math.Fedu.apply(lambda x: 4.0 if x == 40.0 else x)
+stud_math.famrel = stud_math.famrel.apply(lambda x: 1.0 if x == -1.0 else x)
+
+Посмотрев на данные сквозь призму боксплотов, принимаю решение придерживаться первого пути и удалить нулевые значения и пропуски в целевой переменной.
+
+stud_math = stud_math[stud_math['score'].notna()]
+stud_math.drop(stud_math[stud_math['score'] == 0].index , inplace=True)
+stud_math.shape[0]
+
+# фукция для построения распределния и получения данных по iqr
+def iqr(q):
+    median = q.median()
+    IQR = q.quantile(0.75) - q.quantile(0.25)
+    perc25 = q.quantile(0.25)
+    perc75 = q.quantile(0.75)
+    print('25-й перцентиль: {},'.format(perc25), '75-й перцентиль: {},'.format(perc75),"IQR: {}, \
+          ".format(IQR),"Границы выбросов: [{f}, {l}].".format(f=perc25 - 1.5*IQR, l=perc75 + 1.5*IQR))
+    sns.distplot(q.loc[q.between(perc25 - 1.5*IQR, perc75 + 1.5*IQR)])
+
+iqr(stud_math.score)
+
+stud_math = stud_math.loc[stud_math.score.between(8, 100)]
+stud_math.shape[0]
+
+stud_math.age.fillna(stud_math.age.median(), inplace=True)
+stud_math.age.hist()
+stud_math.age.describe()
+
+iqr(stud_math.age)
+
+stud_math = stud_math.loc[stud_math.age.between(15, 21)]
+stud_math.shape[0]
+
+stud_math.absences.fillna(stud_math.absences.median(), inplace=True)
+stud_math.absences.hist(bins=100)
+stud_math.absences.describe()
+
+iqr(stud_math.absences)
+
+stud_math = stud_math.loc[stud_math.absences.between(0, 17)]
+stud_math.shape[0]
+
+sns.heatmap(stud_math[['absences', 'age', 'score']].corr(), annot=True)
+
+Вывод:
+    В целевой переменной не было выбросов. В переменных age и absences 
+    выбросы были, убраны по IQR методике.
+
+# Шаг 5. Отобрать данные, пригодные для дальнейшего построения модели.
+
+def get_stat_dif(column):
+    cols = stud_math.loc[:, column].value_counts().index[:10]
+    combinations_all = list(combinations(cols, 2))
+    for comb in combinations_all:
+        if ttest_ind(stud_math.loc[stud_math.loc[:, column] == comb[0], 'score'], 
+                        stud_math.loc[stud_math.loc[:, column] == comb[1], 'score']).pvalue \
+            <= 0.05/len(combinations_all): # Учли поправку Бонферони
+            print('Найдены статистически значимые различия для колонки', column)
+            break
+
+for col in ['school', 'Medu', 'Fedu', 'Mjob', 'Fjob', 'reason', 'guardian',
+            'traveltime', 'studytime', 'failures', 'famrel', 'freetime', 
+            'goout', 'health', 'sex', 'address', 'famsize', 'Pstatus',
+            'schoolsup', 'famsup', 'paid', 'activities', 'nursery', 'higher',
+            'internet','romantic'
+           ]:
+    get_stat_dif(col)
+
+# Выводы:
+
+    1)В данных, в целом, не очень много пустых значений, но они практически равномерно распределены по всему датасету.
+    
+    2)Выбросы найдены только в 2 столбцах: age, absences, что позволяет сделать вывод о том, что данные достаточно чистые.(В столбцах: Fedu, famrel неподходящие значения буду считать опечаткой, а не выбросом.)
+    
+    3)Отрицательная корреляция параметра absences и score может говорить о том, что чем больше пропущенных занятий, тем ниже score. Так же, отрицательная корреляция наблюдается между age и score, и можно предположить, что чем выше возраст, тем хуже усваивается преподаваемый материал, или по какой-то другой причине ниже score.
+    
+    4)Самые важные параметры, которые предлагается использовать в дальнейшем для построения модели, это: age, absences, Medu, Fedu, Mjob, studytime, failures, goout, health, sex, address, schoolsup.
+    В отобранных параметрах пропуски следует восстановить либо каждый по отдельности, либо перевести все категориальные признаки в числовое представление, посчитав пропуски за полезную информацию (дополнительная категория).
+    
+
